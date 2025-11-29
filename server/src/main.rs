@@ -1,27 +1,37 @@
-use config::*;
-use tracing::{instrument::WithSubscriber, *};
+use std::fmt::Debug;
 
+use axum::{Router, routing::get};
+use std::net::SocketAddr;
+use tracing::*;
+use tracing_subscriber::{FmtSubscriber, fmt::SubscriberBuilder, prelude::*};
 
+mod app;
+mod components;
+mod net;
 mod types;
-use types::JTankDef;
+use components::*;
+mod players;
+mod systems;
 
-fn main() {
-    let tracing_sub = tracing_subscriber::FmtSubscriber::builder()
-        .with_max_level(tracing::Level::DEBUG)
+use types::Config;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<(), anyhow::Error> {
+    let tracing_sub = FmtSubscriber::builder()
+        .with_max_level(Level::TRACE)
+        .pretty()
         .finish();
     tracing::subscriber::set_global_default(tracing_sub)
         .expect("setting default subscriber failed");
 
-    use std::path::PathBuf;
+    let config = Config::load();
 
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let app: Router<()> = Router::new().route("/ws", get(net::ws_handler));
 
-    let config_path = root.join("src/config.toml");
-    let tank_defs_path = root.join("src/tank_defs.json5");
+    // let addr = SocketAddr::from(([127, 0, 0, 1], config.unwrap().tick_rate as u16));
 
-    let config = config::Config::builder()
-        .add_source(config::File::from(config_path))
-        .build()
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 
+    Ok(())
 }
