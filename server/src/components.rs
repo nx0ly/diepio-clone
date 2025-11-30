@@ -22,6 +22,7 @@ pub struct Health {
 pub struct Bullet {
     pub damage: i32,
     pub owner: Entity,
+    pub reload: f32,
 }
 
 // UPDATE THIS LATER!!!
@@ -40,7 +41,7 @@ fn bullet_system(world: &mut World) {
         if bullet.damage <= 0 {
             to_despawn.push(entity);
         }
-    }
+    } 
 
     for e in to_despawn {
         world.despawn(e).unwrap();
